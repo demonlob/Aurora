@@ -1,8 +1,6 @@
 import telegram.ext as tg
-from telegram import Update
-from telegram.ext.filters import Filters
-from telegram.ext.messagehandler import MessageHandler
-from tg_bot import DEV_USERS, MOD_USERS, OWNER_ID, SUDO_USERS, SYS_ADMIN, WHITELIST_USERS, SUPPORT_USERS
+from telegram import MessageEntity, Update
+from MetaButler import DEV_USERS, SUDO_USERS, WHITELIST_USERS, SUPPORT_USERS
 from pyrate_limiter import (
     BucketFullException,
     Duration,
@@ -10,10 +8,9 @@ from pyrate_limiter import (
     Limiter,
     MemoryListBucket,
 )
-import tg_bot.modules.sql.blacklistusers_sql as sql
 
 try:
-    from tg_bot import CUSTOM_CMD
+    from MetaButler import CUSTOM_CMD
 except:
     CUSTOM_CMD = False
 
@@ -27,7 +24,6 @@ class AntiSpam:
             + (SUDO_USERS or [])
             + (WHITELIST_USERS or [])
             + (SUPPORT_USERS or [])
-            + (MOD_USERS or [])
         )
         # Values are HIGHLY experimental, its recommended you pay attention to our commits as we will be adjusting the values over time with what suits best.
         Duration.CUSTOM = 15  # Custom duration, 15 seconds
@@ -43,17 +39,18 @@ class AntiSpam:
             bucket_class=MemoryListBucket,
         )
 
-    @staticmethod
-    def check_user(user):
+    def check_user(self, user):
         """
         Return True if user is to be ignored else False
         """
-        return bool(sql.is_user_blacklisted(user))
-        '''try: # this should be enabled but it disables the bot
+        if user in self.whitelist:
+            return False
+        try:
             self.limiter.try_acquire(user)
             return False
         except BucketFullException:
-            return True'''
+            return True
+
 
 SpamChecker = AntiSpam()
 MessageHandlerChecker = AntiSpam()
@@ -92,6 +89,16 @@ class CustomCommandHandler(tg.CommandHandler):
                 ):
                     return None
 
+                if (
+                    message.entities
+                    and any(
+                        entity.offset in range(1+len(command[0]))
+                        and entity.type != MessageEntity.BOT_COMMAND
+                        for entity in message.entities
+                    )
+                ):
+                    return None
+
                 if SpamChecker.check_user(user_id):
                     return None
 
@@ -100,25 +107,5 @@ class CustomCommandHandler(tg.CommandHandler):
                     return args, filter_result
                 else:
                     return False
-
-
-
-class CustomMessageHandler(MessageHandler):
-    def __init__(self, pattern, callback, run_async=True, friendly="", **kwargs):
-        super().__init__(pattern, callback, run_async=run_async, **kwargs)
-        self.friendly = friendly or pattern
-    def check_update(self, update):
-        if isinstance(update, Update) and update.effective_message:
-
-            try:
-                user_id = update.effective_user.id
-            except:
-                user_id = None
-
-            if self.filters(update):
-                if SpamChecker.check_user(user_id):
-                    return None
-                return True
-            return False
 
 
