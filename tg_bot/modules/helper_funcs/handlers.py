@@ -1,7 +1,7 @@
 import telegram.ext as tg
 from telegram import Update
 from telegram.ext.filters import Filters
-from pyrate_limiter import BucketFullException, Duration, Limiter, Rate
+from pyrate_limiter import BucketFullException, Duration, Limiter, RequestRate
 from telegram.ext.messagehandler import MessageHandler
 from tg_bot import DEV_USERS, MOD_USERS, OWNER_ID, SUDO_USERS, SYS_ADMIN, WHITELIST_USERS, SUPPORT_USERS
 import tg_bot.modules.sql.blacklistusers_sql as sql
